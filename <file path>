@@ -1,0 +1,25 @@
+
+import os
+
+def get_env_variable(variable_name, default=None):
+    """
+    Get an environment variable's value if set; otherwise, return a default value.
+    :param variable_name: str, the name of the environment variable
+    :param default: default value to return if the environment variable is not set
+    :return: the value of the environment variable or the default value
+    """
+    return os.getenv(variable_name, default)
+
+import torch
+
+def get_device():
+    """
+    Determines the best computation device available ('cuda' or 'cpu').
+
+    Returns:
+        str: The identifier for the optimal device ('cuda' or 'cpu').
+    """
+    if torch.cuda.is_available():
+        return 'cuda'
+    else:
+        return 'cpu'
