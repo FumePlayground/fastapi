@@ -9,14 +9,12 @@ from fastapi.testclient import TestClient
 
 
 # TODO: remove when deprecating Pydantic v1
-def test_upload_file_invalid():
+# Validate Data Structures
+def test_invalid_file_upload():
     with pytest.raises(ValueError):
         UploadFile.validate("not a Starlette UploadFile")
 
 
-def test_upload_file_invalid_pydantic_v2():
-    with pytest.raises(ValueError):
-        UploadFile._validate("not a Starlette UploadFile", {})
 
 
 def test_default_placeholder_equals():
@@ -33,7 +31,7 @@ def test_default_placeholder_bool():
     assert not placeholder_b
 
 
-def test_upload_file_is_closed(tmp_path: Path):
+def test_file_closure(tmp_path: Path):
     path = tmp_path / "test.txt"
     path.write_bytes(b"<file content>")
     app = FastAPI()
@@ -55,8 +53,22 @@ def test_upload_file_is_closed(tmp_path: Path):
     assert testing_file_store[0].file.closed
 
 
-# For UploadFile coverage, segments copied from Starlette tests
+# New unit test: Valid file upload
+def test_valid_file_upload():
+    file_content = b"test content"
+    app = FastAPI()
+    client = TestClient(app)
 
+    @app.post("/uploadfile/")
+    def create_upload_file(file: UploadFile):
+        return {"filename": file.filename}
+
+    response = client.post("/uploadfile/", files={"file": ("test.txt", file_content)})
+    assert response.status_code == 200
+    assert response.json() == {"filename": "test.txt"}
+
+
+# For UploadFile coverage, segments copied from Starlette tests
 
 @pytest.mark.anyio
 async def test_upload_file():

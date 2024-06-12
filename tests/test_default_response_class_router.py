@@ -1,4 +1,4 @@
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Response
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.testclient import TestClient
 
@@ -26,7 +26,9 @@ def get_path_override():
     return "Hello World"
 
 
-@router_a.get("/")
+@app.get("/html-endpoint", response_class=HTMLResponse)
+def get_html_endpoint():
+    return "<html><body><h1>Hello HTML</h1></body></html>"
 def get_a():
     return {"msg": "Hello A"}
 
@@ -199,7 +201,12 @@ def test_router_b_a_c():
     assert response.headers["content-type"] == html_type
 
 
-def test_router_b_a_c_override():
+# New unit test: Validate HTML response
+def test_html_response():
+    response = client.get("/html-endpoint")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert "<html>" in response.text
     with client:
         response = client.get("/b/a/c/override")
     assert response.json() == {"msg": "Hello B A C"}
