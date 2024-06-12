@@ -34,6 +34,12 @@ def get_user():
     return request_state["user"]
 
 
+@app.get("/some-endpoint", dependencies=[Depends(set_up_request_state_dependency)])
+def some_endpoint():
+    request_state = legacy_request_state_context_var.get()
+    assert request_state
+    return {"context_data": "expected_value"}
+
 client = TestClient(app)
 
 
@@ -49,3 +55,9 @@ def test_dependency_contextvars():
     response = client.get("/user")
     assert response.json() == "deadpond"
     assert response.headers["custom"] == "foo"
+# New unit test: Validate middleware does not affect context
+def test_custom_middleware_preserves_context():
+    response = client.get("/some-endpoint")
+    assert response.status_code == 200
+    assert "custom" in response.headers
+    assert response.json()["context_data"] == "expected_value"

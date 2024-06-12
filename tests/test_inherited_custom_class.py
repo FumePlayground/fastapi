@@ -70,7 +70,100 @@ def test_pydanticv2():
     }
 
 
-# TODO: remove when deprecating Pydantic v1
+# Validate Custom Classes and Serialization
+def test_custom_class_v1():
+    app = FastAPI()
+
+    @app.get("/fast_uuid")
+    def return_fast_uuid():
+        asyncpg_uuid = MyUuid("a10ff360-3b1e-4984-a26f-d3ab460bdb51")
+        assert isinstance(asyncpg_uuid, uuid.UUID)
+        assert type(asyncpg_uuid) != uuid.UUID
+        with pytest.raises(TypeError):
+            vars(asyncpg_uuid)
+        return {"fast_uuid": asyncpg_uuid}
+
+    class SomeCustomClass(BaseModel):
+        class Config:
+            arbitrary_types_allowed = True
+            json_encoders = {uuid.UUID: str}
+
+        a_uuid: MyUuid
+
+    @app.get("/get_custom_class")
+    def return_some_user():
+        return SomeCustomClass(a_uuid=MyUuid("b8799909-f914-42de-91bc-95c819218d01"))
+
+    client = TestClient(app)
+
+    with client:
+        response_simple = client.get("/fast_uuid")
+        response_pydantic = client.get("/get_custom_class")
+
+    assert response_simple.json() == {
+        "fast_uuid": "a10ff360-3b1e-4984-a26f-d3ab460bdb51"
+    }
+
+    assert response_pydantic.json() == {
+        "a_uuid": "b8799909-f914-42de-91bc-95c819218d01"
+    }
+
+def test_custom_class_v2():
+    from pydantic import field_serializer
+
+    app = FastAPI()
+
+    @app.get("/fast_uuid")
+    def return_fast_uuid():
+        asyncpg_uuid = MyUuid("a10ff360-3b1e-4984-a26f-d3ab460bdb51")
+        assert isinstance(asyncpg_uuid, uuid.UUID)
+        assert type(asyncpg_uuid) != uuid.UUID
+        with pytest.raises(TypeError):
+            vars(asyncpg_uuid)
+        return {"fast_uuid": asyncpg_uuid}
+
+    class SomeCustomClass(BaseModel):
+        model_config = {"arbitrary_types_allowed": True}
+
+        a_uuid: MyUuid
+
+        @field_serializer("a_uuid")
+        def serialize_a_uuid(self, v):
+            return str(v)
+
+    @app.get("/get_custom_class")
+    def return_some_user():
+        return SomeCustomClass(a_uuid=MyUuid("b8799909-f914-42de-91bc-95c819218d01"))
+
+    client = TestClient(app)
+
+    with client:
+        response_simple = client.get("/fast_uuid")
+        response_pydantic = client.get("/get_custom_class")
+
+    assert response_simple.json() == {
+        "fast_uuid": "a10ff360-3b1e-4984-a26f-d3ab460bdb51"
+    }
+
+    assert response_pydantic.json() == {
+        "a_uuid": "b8799909-f914-42de-91bc-95c819218d01"
+    }
+
+# New unit test: Validate custom UUID class
+def test_my_uuid():
+    app = FastAPI()
+
+    @app.get("/uuid-endpoint")
+    def return_uuid():
+        return {"uuid": str(MyUuid("a10ff360-3b1e-4984-a26f-d3ab460bdb51"))}
+
+    client = TestClient(app)
+
+    with client:
+        response = client.get("/uuid-endpoint")
+        assert response.status_code == 200
+        assert "uuid" in response.json()
+        assert isinstance(response.json()["uuid"], str)
 @needs_pydanticv1
 def test_pydanticv1():
     app = FastAPI()
